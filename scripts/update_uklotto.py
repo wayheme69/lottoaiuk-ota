@@ -14,11 +14,12 @@ def fetch(year):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 txt = r.read().decode("utf-8", "replace")
-            if txt.count("/lotto/results-") >= 5:
+            if txt.count("/lotto/results-") >= 1 and "lotto-ball" in txt:
                 return txt
         except Exception as e:
             print("fetch retry:", str(e)[:80])
-        time.sleep(12 * (i + 1))
+        if i < 3:
+            time.sleep(12 * (i + 1))
     return ""
 
 def parse(html):
@@ -48,14 +49,14 @@ def parse(html):
 def main():
     year = datetime.date.today().year
     records = parse(fetch(year))
-    if len(records) < 4:
+    if len(records) < 14:
         records += parse(fetch(year - 1))
     records.sort(key=lambda r: (r["date"], r["round"]), reverse=True)
     records = records[:14]
     if len(records) < 4:
         print(f"FAIL: only {len(records)} records parsed"); sys.exit(1)
     newest = datetime.date.fromisoformat(records[0]["date"])
-    if (datetime.date.today() - newest).days > 8:
+    if (datetime.date.today() - newest).days > 6:
         print(f"FAIL: newest record {newest} is stale"); sys.exit(1)
     json.dump(records, open("uklotto_recent.json", "w"), indent=1)
     print(f"OK: {len(records)} records, newest {newest}")
