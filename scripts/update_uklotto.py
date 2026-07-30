@@ -7,18 +7,33 @@ import re, json, urllib.request, datetime, sys, time
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15"
 
+def _get(url, headers, timeout=60):
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read().decode("utf-8", "replace")
+
 def fetch(year):
+    """lottery.co.uk direct, puis via r.jina.ai (30/07 : la source timeout depuis
+    les runners GitHub — même contournement que le flux ES/SELAE, X-Return-Format
+    html pour garder le parseur intact)."""
     url = f"https://www.lottery.co.uk/lotto/results/archive-{year}"
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    for i in range(4):
+    attempts = [
+        (url, {"User-Agent": UA}),
+        (url, {"User-Agent": UA}),
+        (f"https://r.jina.ai/{url}", {"User-Agent": UA, "X-Return-Format": "html"}),
+        (f"https://r.jina.ai/{url}", {"User-Agent": UA, "X-Return-Format": "html"}),
+        (f"https://r.jina.ai/{url}", {"User-Agent": UA, "X-Return-Format": "html"}),
+    ]
+    for i, (u, h) in enumerate(attempts):
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:
-                txt = r.read().decode("utf-8", "replace")
+            txt = _get(u, h, timeout=90)
             if txt.count("/lotto/results-") >= 1 and "lotto-ball" in txt:
+                print(f"fetch OK via {'jina' if 'jina' in u else 'direct'} (tentative {i+1})")
                 return txt
+            print(f"fetch tentative {i+1}: contenu inattendu ({len(txt)} c)")
         except Exception as e:
             print("fetch retry:", str(e)[:80])
-        if i < 3:
+        if i < len(attempts) - 1:
             time.sleep(12 * (i + 1))
     return ""
 
