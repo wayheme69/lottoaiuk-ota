@@ -1,37 +1,26 @@
 #!/usr/bin/env python3
-"""Sonde v2 : dump du format exact des 2 sources qui repondent. A supprimer."""
-import urllib.request, re, datetime
+"""Sonde v3 : structure complete de 2 tirages beatlottery. A supprimer."""
+import urllib.request, re
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
       "(KHTML, like Gecko) Version/17.4 Safari/605.1.15")
+req = urllib.request.Request("https://www.beatlottery.co.uk/lotto/draw-history",
+                             headers={"User-Agent": UA})
+html = urllib.request.urlopen(req, timeout=45).read().decode("utf-8", "replace")
 
-def get(url, headers=None, timeout=45):
-    req = urllib.request.Request(url, headers=headers or {"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read().decode("utf-8", "replace")
+i = html.find("draw_date/2026-08-01")
+start = html.rfind("<tr", 0, max(0, i - 1200))
+seg = html[start:i + 2600]
+seg = re.sub(r"\s+", " ", seg)
+print("=== STRUCTURE BRUTE (2 tirages) ===")
+print(seg)
 
-print("=" * 78)
-print("A) NATIONAL-LOTTERY.CO.UK — CSV OFFICIEL (dump integral)")
-print("=" * 78)
-try:
-    csv = get("https://www.national-lottery.co.uk/results/lotto/draw-history/csv")
-    print(csv)
-except Exception as e:
-    print("ECHEC:", e)
-
-print()
-print("=" * 78)
-print("B) BEATLOTTERY.CO.UK — extrait autour des tirages recents")
-print("=" * 78)
-try:
-    html = get("https://www.beatlottery.co.uk/lotto/draw-history")
-    for target in ("2026-08-01", "2026-07-29"):
-        i = html.find(target)
-        print(f"\n--- contexte autour de {target} (index {i}) ---")
-        if i >= 0:
-            seg = html[max(0, i - 700):i + 700]
-            seg = re.sub(r"\s+", " ", seg)
-            print(seg)
-except Exception as e:
-    print("ECHEC:", e)
-print("\n=== FIN SONDE v2 ===")
+print("\n=== TEST DE PARSING ===")
+# tokens dans l'ordre d'apparition : dates, marqueurs de round, boules
+toks = re.findall(
+    r'draw_date/(\d{4}-\d{2}-\d{2})'
+    r'|Round (\d)</div>'
+    r'|results_ball_new ball-(lotto|bonus)">(\d+)<', html)
+print("30 premiers tokens :")
+for t in toks[:30]:
+    print("   ", t)
