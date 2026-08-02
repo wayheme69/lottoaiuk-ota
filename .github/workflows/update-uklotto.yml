@@ -1,8 +1,14 @@
 name: Update UK Lotto results
 on:
   schedule:
-    - cron: '30 22 * * 3,6'   # Wed & Sat 22:30 UTC, after the ~20:00 UK draw
-    - cron: '30 7 * * 4,0'    # Thu & Sun 07:30 UTC, safety re-check
+    # Draws are Wed & Sat ~20:00 UK. GitHub often delays crons by an hour or more,
+    # and a source can be down for a while — retry several times after each draw
+    # instead of once, plus a daily catch-all.
+    - cron: '30 22 * * 3,6'   # right after the draw
+    - cron: '30 1 * * 4,0'    # +3h
+    - cron: '30 7 * * 4,0'    # +9h
+    - cron: '30 13 * * 4,0'   # +15h
+    - cron: '0 6 * * *'       # daily safety net
   workflow_dispatch: {}
 permissions:
   contents: write
